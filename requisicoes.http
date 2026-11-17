@@ -1,0 +1,188 @@
+### 1. LOGIN PUBLICO
+
+# 1.1 Login Administrador (Sucesso -> 200 OK e Token)
+# @name loginAdmin
+POST http://localhost:8080/login
+Content-Type: application/json
+
+{
+  "nomeUsuario": "admin",
+  "senha": "admin123"
+}
+
+### Guardar Token Admin
+@tokenAdmin = {{loginAdmin.response.body.token}}
+
+### 1.2 Login Gerente
+# @name loginGerente
+POST http://localhost:8080/login
+Content-Type: application/json
+
+{
+  "nomeUsuario": "gerente",
+  "senha": "gerente123"
+}
+
+### Guardar Token Gerente
+@tokenGerente = {{loginGerente.response.body.token}}
+
+### 1.3 Login Vendedor
+# @name loginVendedor
+POST http://localhost:8080/login
+Content-Type: application/json
+
+{
+  "nomeUsuario": "vendedor",
+  "senha": "vendedor123"
+}
+
+### Guardar Token Vendedor
+@tokenVendedor = {{loginVendedor.response.body.token}}
+
+### 1.4 Login Cliente
+# @name loginCliente
+POST http://localhost:8080/login
+Content-Type: application/json
+
+{
+  "nomeUsuario": "cliente",
+  "senha": "cliente123"
+}
+
+### Guardar Token Cliente
+@tokenCliente = {{loginCliente.response.body.token}}
+
+### 1.5 Login Invalido (401 Unauthorized)
+POST http://localhost:8080/login
+Content-Type: application/json
+
+{
+  "nomeUsuario": "admin",
+  "senha": "senhaErrada"
+}
+
+### 2. CASOS DE ERRO GERAIS (401 e 403)
+
+### 2.1 Requisicao sem Token (401 Unauthorized)
+GET http://localhost:8080/usuarios
+
+### 2.2 Requisicao com Token Invalido (401 Unauthorized)
+GET http://localhost:8080/usuarios
+Authorization: Bearer tokenTotalmenteInvalido123
+
+### 3. PERFIL ADMINISTRADOR
+
+### 3.1 Permitido: Administrador lista empresas (200 OK)
+GET http://localhost:8080/empresas
+Authorization: Bearer {{tokenAdmin}}
+
+### 3.2 Permitido: Administrador lista todas as credenciais (200 OK)
+GET http://localhost:8080/credenciais
+Authorization: Bearer {{tokenAdmin}}
+
+### 3.3 Permitido: Administrador cria um novo usuario Gerente (201 Created)
+POST http://localhost:8080/usuarios
+Authorization: Bearer {{tokenAdmin}}
+Content-Type: application/json
+
+{
+  "nome": "Novo Gerente Teste",
+  "nomeSocial": "Gerente Teste",
+  "perfis": ["GERENTE"]
+}
+
+### 4. PERFIL GERENTE
+
+### 4.1 Permitido: Gerente cadastra nova mercadoria (201 Created)
+POST http://localhost:8080/mercadorias
+Authorization: Bearer {{tokenGerente}}
+Content-Type: application/json
+
+{
+  "nome": "Filtro de Oleo",
+  "descricao": "Filtro para motor",
+  "quantidade": 50,
+  "valor": 45.0
+}
+
+### 4.2 Permitido: Gerente lista usuarios (gerente, vendedor, cliente) (200 OK)
+GET http://localhost:8080/usuarios
+Authorization: Bearer {{tokenGerente}}
+
+### 4.3 Negado: Gerente tenta cadastrar usuario com perfil ADMINISTRADOR (403 Forbidden)
+POST http://localhost:8080/usuarios
+Authorization: Bearer {{tokenGerente}}
+Content-Type: application/json
+
+{
+  "nome": "Invasor Admin",
+  "perfis": ["ADMINISTRADOR"]
+}
+
+### 4.4 Negado: Gerente tenta acessar /credenciais (403 Forbidden)
+GET http://localhost:8080/credenciais
+Authorization: Bearer {{tokenGerente}}
+
+### 5. PERFIL VENDEDOR
+
+### 5.1 Permitido: Vendedor le mercadorias (200 OK)
+GET http://localhost:8080/mercadorias
+Authorization: Bearer {{tokenVendedor}}
+
+### 5.2 Permitido: Vendedor cria venda para si mesmo (201 Created)
+POST http://localhost:8080/vendas
+Authorization: Bearer {{tokenVendedor}}
+Content-Type: application/json
+
+{
+  "identificacao": "VENDA-VENDEDOR-01",
+  "cliente": {
+    "id": 4
+  }
+}
+
+### 5.3 Negado: Vendedor tenta cadastrar nova mercadoria (403 Forbidden)
+POST http://localhost:8080/mercadorias
+Authorization: Bearer {{tokenVendedor}}
+Content-Type: application/json
+
+{
+  "nome": "Pneu Aro 17",
+  "descricao": "Pneu esportivo",
+  "quantidade": 10,
+  "valor": 450.0
+}
+
+### 5.4 Negado: Vendedor tenta cadastrar usuario GERENTE (403 Forbidden)
+POST http://localhost:8080/usuarios
+Authorization: Bearer {{tokenVendedor}}
+Content-Type: application/json
+
+{
+  "nome": "Tentativa Gerente",
+  "perfis": ["GERENTE"]
+}
+
+### 6. PERFIL CLIENTE
+
+### 6.1 Permitido: Cliente le suas proprias vendas (200 OK)
+GET http://localhost:8080/vendas
+Authorization: Bearer {{tokenCliente}}
+
+### 6.2 Permitido: Cliente le o seu proprio cadastro (200 OK)
+# Considerando que o cliente no seed tem id 4
+GET http://localhost:8080/usuarios/4
+Authorization: Bearer {{tokenCliente}}
+
+### 6.3 Negado: Cliente tenta ler cadastro de outro usuario (ex: id 1 - Admin) (403 Forbidden)
+GET http://localhost:8080/usuarios/1
+Authorization: Bearer {{tokenCliente}}
+
+### 6.4 Negado: Cliente tenta cadastrar mercadoria ou venda (403 Forbidden)
+POST http://localhost:8080/vendas
+Authorization: Bearer {{tokenCliente}}
+Content-Type: application/json
+
+{
+  "identificacao": "VENDA-ILEGAL"
+}
